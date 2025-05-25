@@ -1,7 +1,6 @@
 // src/config/validation.js
 
 const Joi = require('joi');
-const logger = require('../utils/logger');
 
 /**
  * Валідація конфігурації
@@ -10,6 +9,9 @@ const logger = require('../utils/logger');
  */
 function validateConfig(config) {
   try {
+    // Імпортуємо логер в функції, щоб уникнути циклічної залежності
+    const logger = require('../utils/logger');
+    
     // Схема для Binance API
     const binanceSchema = Joi.object({
       apiKey: Joi.string().required().messages({
@@ -170,7 +172,7 @@ function validateConfig(config) {
     // Схема для налаштувань сервера
     const serverSchema = Joi.object({
       port: Joi.number().port(),
-      host: Joi.string().ip(),
+      host: Joi.string(),
       api: Joi.object({
         enabled: Joi.boolean(),
         prefix: Joi.string(),
@@ -202,7 +204,7 @@ function validateConfig(config) {
       }),
       ipWhitelist: Joi.object({
         enabled: Joi.boolean(),
-        ips: Joi.array().items(Joi.string().ip())
+        ips: Joi.array().items(Joi.string())
       }),
       rateLimit: Joi.object({
         enabled: Joi.boolean(),
@@ -256,7 +258,8 @@ function validateConfig(config) {
     };
     
   } catch (error) {
-    logger.error('❌ Помилка валідації конфігурації:', error);
+    // Якщо логер недоступний, виводимо помилку в консоль
+    console.error('❌ Помилка валідації конфігурації:', error);
     return {
       isValid: false,
       errors: [error.message]
