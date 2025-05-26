@@ -65,7 +65,6 @@ class BinanceListingBot {
    * Ініціалізація бази даних
    */
   async initializeDatabase() {
-    logger.info('🗄️ Підключення до бази даних...');
     this.services.database = new DatabaseService();
     await this.services.database.connect();
   }
@@ -74,7 +73,6 @@ class BinanceListingBot {
    * Ініціалізація торгового сервісу
    */
   async initializeTradingService() {
-    logger.info('💹 Ініціалізація торгового сервісу...');
     this.services.trading = new TradingService(this.services.database);
     await this.services.trading.initialize();
   }
@@ -83,7 +81,6 @@ class BinanceListingBot {
    * Ініціалізація сервісу сповіщень
    */
   async initializeNotificationService() {
-    logger.info('📢 Ініціалізація сервісу сповіщень...');
     this.services.notification = new NotificationService();
     await this.services.notification.initialize();
   }
@@ -95,7 +92,8 @@ class BinanceListingBot {
     // Використовуємо WebSocket якщо він увімкнений
     if (config.monitoring.useWebSocket && process.env.USE_WEBSOCKET === 'true') {
       logger.info('📡 Ініціалізація WebSocket моніторингу...');
-      this.monitors.websocket = new WebSocketMonitor();
+      // Передаємо поточний клієнт із фабрики
+      this.monitors.websocket = new WebSocketMonitor(this.clientFactory.getClient());
       
       // Обробка подій WebSocket
       this.monitors.websocket.on('newListing', this.handleNewListing.bind(this));
@@ -105,7 +103,8 @@ class BinanceListingBot {
     // Інакше використовуємо Polling
     else if (config.monitoring.pollingEnabled && process.env.USE_POLLING === 'true') {
       logger.info('🔄 Ініціалізація Polling моніторингу...');
-      this.monitors.polling = new PollingMonitor();
+      // Передаємо поточний клієнт із фабрики
+      this.monitors.polling = new PollingMonitor(this.clientFactory.getClient());
       
       // Обробка подій Polling
       this.monitors.polling.on('newListing', this.handleNewListing.bind(this));

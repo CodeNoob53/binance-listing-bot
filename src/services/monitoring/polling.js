@@ -10,9 +10,9 @@ const { BinanceClient } = require('../binance/client');
  * Використовується як резервний метод, якщо WebSocket недоступний
  */
 class PollingMonitor extends EventEmitter {
-  constructor() {
+  constructor(binanceClient) {
     super();
-    this.binanceClient = new BinanceClient();
+    this.binanceClient = binanceClient;
     this.knownSymbols = new Set();
     this.pollingInterval = null;
     this.isRunning = false;
