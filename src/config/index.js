@@ -231,7 +231,7 @@ const config = {
 // Валідуємо конфігурацію
 const validationResult = validateConfig(config);
 if (!validationResult.isValid) {
-  console.error('❌ Помилка конфігурації:', validationResult.errors);
+  console.error('❌ Помилки валідації конфігурації:', validationResult.errors);
   process.exit(1);
 }
 

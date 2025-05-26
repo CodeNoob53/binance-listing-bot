@@ -31,7 +31,7 @@ const defaultConfig = {
 // Функція для відкладеного завантаження конфігу (уникаємо циклічної залежності)
 function getConfig() {
   try {
-    return require('../config');
+    return require('../config/index') || defaultConfig;
   } catch (e) {
     console.warn('Не вдалося завантажити конфігурацію, використовуємо дефолтні налаштування логера');
     return defaultConfig;
@@ -111,10 +111,10 @@ function createTransports() {
   const transports = [];
 
   // Консольний транспорт
-  if (config.logging.console.enabled) {
+  if (config?.logging?.console?.enabled) {
     transports.push(
       new winston.transports.Console({
-        level: config.logging.level,
+        level: config.logging.level || 'info',
         format: format.combine(
           config.logging.console.colorize ? format.colorize() : format.uncolorize(),
           customFormat
@@ -124,14 +124,14 @@ function createTransports() {
   }
 
   // Файловий транспорт
-  if (config.logging.file.enabled) {
+  if (config?.logging?.file?.enabled) {
     transports.push(
       new DailyRotateFile({
-        filename: path.join(logDir, '%DATE%_' + config.logging.file.filename),
+        filename: path.join(logDir, '%DATE%_' + (config.logging.file.filename || 'app.log')),
         datePattern: 'YYYY-MM-DD',
-        maxSize: config.logging.file.maxSize,
-        maxFiles: config.logging.file.maxFiles,
-        level: config.logging.level,
+        maxSize: config.logging.file.maxSize || '10m',
+        maxFiles: config.logging.file.maxFiles || 5,
+        level: config.logging.level || 'info',
         format: customFormat
       })
     );

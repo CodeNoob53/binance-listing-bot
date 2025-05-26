@@ -9,9 +9,6 @@ const Joi = require('joi');
  */
 function validateConfig(config) {
   try {
-    // Імпортуємо логер в функції, щоб уникнути циклічної залежності
-    const logger = require('../utils/logger');
-    
     // Схема для Binance API
     const binanceSchema = Joi.object({
       apiKey: Joi.string().required().messages({
@@ -245,7 +242,6 @@ function validateConfig(config) {
     if (result.error) {
       // Логуємо помилки валідації
       const errors = result.error.details.map(error => `${error.path.join('.')}: ${error.message}`);
-      logger.error('❌ Помилки валідації конфігурації:', errors);
       
       return {
         isValid: false,
