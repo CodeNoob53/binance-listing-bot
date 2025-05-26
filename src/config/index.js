@@ -39,7 +39,7 @@ const config = {
       apiKey: process.env.BINANCE_API_KEY || '',
       apiSecret: process.env.BINANCE_API_SECRET || '',
       baseURL: process.env.BINANCE_BASE_URL || 'https://api.binance.com',
-      wsBaseURL: process.env.BINANCE_WS_BASE_URL || 'wss://stream.binance.com:9443/ws',
+      wsBaseURL: process.env.BINANCE_WS_BASE_URL || 'wss://stream.binance.com:9443',
       wsApiBaseURL: process.env.BINANCE_WS_API_BASE_URL || 'wss://ws-api.binance.com:443/ws-api/v3',
     },
     // Testnet configuration
@@ -47,7 +47,7 @@ const config = {
       apiKey: process.env.BINANCE_TESTNET_API_KEY || '',
       apiSecret: process.env.BINANCE_TESTNET_API_SECRET || '',
       baseURL: process.env.BINANCE_TESTNET_BASE_URL || 'https://testnet.binance.vision',
-      wsBaseURL: process.env.BINANCE_TESTNET_WS_BASE_URL || 'wss://testnet.binance.vision/ws',
+      wsBaseURL: process.env.BINANCE_TESTNET_WS_BASE_URL || 'wss://testnet.binance.vision',
       wsApiBaseURL: process.env.BINANCE_TESTNET_WS_API_BASE_URL || 'wss://ws-api.testnet.binance.vision/ws-api/v3',
     },
     // Common settings
@@ -113,10 +113,10 @@ const config = {
   // Моніторинг
   monitoring: {
     // WebSocket як основний метод
-    useWebSocket: process.env.USE_WEBSOCKET !== 'false',
+    useWebSocket: process.env.USE_WEBSOCKET === 'true',
     // Polling як резервний метод
     pollingInterval: parseInt(process.env.POLLING_INTERVAL) || 5000, // 5 секунд
-    pollingEnabled: process.env.POLLING_ENABLED !== 'false',
+    pollingEnabled: process.env.USE_POLLING === 'true',
     // Reconnect налаштування для WebSocket
     reconnect: {
       maxAttempts: parseInt(process.env.WS_RECONNECT_ATTEMPTS) || 5,

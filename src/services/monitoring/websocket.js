@@ -104,8 +104,8 @@ class WebSocketMonitor extends EventEmitter {
         // Вибір endpoint залежно від типу стріму та середовища
         let wsUrl;
         if (config.binance.useTestnet) {
-          // Для testnet використовуємо базовий WebSocket URL
-          wsUrl = 'wss://testnet.binance.vision/ws';
+          // Для testnet використовуємо комбінований стрім
+          wsUrl = `${config.binance.activeConfig.wsBaseURL}/stream?streams=${streams.join('/')}`;
         } else {
           // Для mainnet використовуємо комбінований стрім
           wsUrl = `${config.binance.activeConfig.wsBaseURL}/stream?streams=${streams.join('/')}`;
@@ -145,12 +145,16 @@ class WebSocketMonitor extends EventEmitter {
         
         this.ws.on('error', (error) => {
           logger.error('❌ WebSocket помилка:', error);
+          logger.error('WebSocket URL:', wsUrl);
+          logger.error('WebSocket статус:', this.ws.readyState);
           this.emit('error', error);
         });
         
         this.ws.on('close', (code, reason) => {
           this.isConnected = false;
           logger.warn(`⚠️ WebSocket закрито. Код: ${code}, Причина: ${reason}`);
+          logger.warn('WebSocket URL:', wsUrl);
+          logger.warn('WebSocket статус:', this.ws.readyState);
           this.emit('disconnected', { code, reason });
           
           // Спроба перепідключення

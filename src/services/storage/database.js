@@ -389,17 +389,18 @@ class DatabaseService {
    */
   async getPositionBySymbol(symbol) {
     try {
-      return await this.models.Position.findOne({
+      const position = await this.models.Position.findOne({
         where: {
           symbol,
           status: {
-            [Op.notIn]: [config.constants.POSITION_STATUS.CLOSED]
+            [Op.ne]: 'closed'
           }
         }
       });
+      return position;
     } catch (error) {
-      logger.error(`❌ Помилка отримання позиції для ${symbol}:`, error);
-      throw error;
+      logger.error('❌ Помилка отримання позиції за символом:', error);
+      return null;
     }
   }
 
