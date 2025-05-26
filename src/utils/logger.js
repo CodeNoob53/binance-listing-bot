@@ -44,38 +44,70 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// Створюємо формати для логера з використанням відкладеного завантаження конфігу
-const customFormat = format.combine(
-  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-  format.errors({ stack: true }),
-  format.printf(info => {
-    const config = getConfig();
-    const { timestamp, level, message, ...rest } = info;
-    
-    // Додаємо emoji для рівнів логування
-    const levelEmoji = {
-      error: '❌',
-      warn: '⚠️',
-      info: 'ℹ️',
-      http: '🌐',
-      verbose: '📝',
-      debug: '🔍',
-      silly: '🤪',
-      trade: '💹',
-      position: '📊'
+// Функція для безпечного серіалізування об'єктів
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular]';
+      }
+      seen.add(value);
+    }
+    return value;
+  }, 2);
+}
+
+// Функція для форматування помилок
+function formatError(error) {
+  if (!error) return 'Unknown error';
+  
+  // Базова інформація про помилку
+  const errorInfo = {
+    message: error.message || 'No error message',
+    code: error.code,
+    status: error.status || error.statusCode,
+    name: error.name
+  };
+
+  // Додаємо додаткову інформацію для Axios помилок
+  if (error.config) {
+    errorInfo.request = {
+      method: error.config.method,
+      url: error.config.url,
+      baseURL: error.config.baseURL
     };
+  }
+
+  // Додаємо відповідь сервера, якщо вона є
+  if (error.response) {
+    errorInfo.response = {
+      status: error.response.status,
+      statusText: error.response.statusText,
+      data: error.response.data
+    };
+  }
+
+  return errorInfo;
+}
+
+// Налаштування формату
+const logFormat = format.combine(
+  format.timestamp(),
+  format.errors({ stack: true }),
+  format.printf(({ level, message, timestamp, ...meta }) => {
+    let logMessage = `${timestamp} [${level.toUpperCase()}]: ${message}`;
     
-    const emoji = levelEmoji[level] || '';
-    
-    // Основне повідомлення
-    let log = `${timestamp} ${emoji} [${level.toUpperCase()}]: ${message}`;
-    
-    // Додаємо контекст, якщо є
-    if (Object.keys(rest).length > 0) {
-      log += ` ${JSON.stringify(rest)}`;
+    if (Object.keys(meta).length > 0) {
+      // Форматуємо помилки спеціальним чином
+      if (meta.error) {
+        logMessage += `\n${safeStringify(formatError(meta.error))}`;
+      } else {
+        logMessage += `\n${safeStringify(meta)}`;
+      }
     }
     
-    return log;
+    return logMessage;
   })
 );
 
@@ -117,7 +149,7 @@ function createTransports() {
         level: config.logging.level || 'info',
         format: format.combine(
           config.logging.console.colorize ? format.colorize() : format.uncolorize(),
-          customFormat
+          logFormat
         )
       })
     );
@@ -132,7 +164,7 @@ function createTransports() {
         maxSize: config.logging.file.maxSize || '10m',
         maxFiles: config.logging.file.maxFiles || 5,
         level: config.logging.level || 'info',
-        format: customFormat
+        format: logFormat
       })
     );
   }
@@ -144,7 +176,7 @@ function createTransports() {
 const logger = winston.createLogger({
   levels: customLevels.levels,
   level: 'info', // Початковий рівень, буде оновлено після завантаження конфігу
-  format: customFormat,
+  format: logFormat,
   transports: createTransports(),
   exitOnError: false
 });
@@ -188,6 +220,22 @@ logger.saveToDb = async function(level, message, context = {}) {
       console.error('Помилка збереження логу в БД:', error);
     }
   }
+};
+
+// Додаємо методи для різних типів логування
+logger.trade = function(message, meta = {}) {
+  this.info(`[TRADE] ${message}`, meta);
+};
+
+logger.position = function(message, meta = {}) {
+  this.info(`[POSITION] ${message}`, meta);
+};
+
+logger.error = function(message, error = null, meta = {}) {
+  if (error) {
+    meta.error = error;
+  }
+  this.log('error', message, meta);
 };
 
 // Експортуємо логер

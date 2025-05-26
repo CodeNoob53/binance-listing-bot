@@ -6,7 +6,20 @@ const { validateConfig } = require('./validation');
 const constants = require('./constants');
 
 // Завантажуємо змінні оточення
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+const envPath = path.resolve(process.cwd(), '.env');
+console.log('Loading .env file from:', envPath);
+const result = dotenv.config({ path: envPath });
+console.log('Dotenv config result:', result);
+
+// Додаємо логування для перевірки
+console.log('Environment variables:', {
+  BINANCE_API_KEY: process.env.BINANCE_API_KEY ? 'Set' : 'Not set',
+  BINANCE_API_SECRET: process.env.BINANCE_API_SECRET ? 'Set' : 'Not set',
+  BINANCE_TESTNET_API_KEY: process.env.BINANCE_TESTNET_API_KEY ? 'Set' : 'Not set',
+  BINANCE_TESTNET_API_SECRET: process.env.BINANCE_TESTNET_API_SECRET ? 'Set' : 'Not set',
+  BINANCE_TESTNET: process.env.BINANCE_TESTNET,
+  NODE_ENV: process.env.NODE_ENV
+});
 
 // Визначаємо середовище
 const ENV = process.env.NODE_ENV || 'development';
@@ -21,15 +34,39 @@ const config = {
 
   // Binance API
   binance: {
-    apiKey: process.env.BINANCE_API_KEY,
-    apiSecret: process.env.BINANCE_API_SECRET,
-    testnet: process.env.BINANCE_TESTNET === 'true',
-    baseURL: process.env.BINANCE_TESTNET === 'true' 
-      ? 'https://testnet.binance.vision/api'
-      : 'https://api.binance.com/api',
-    wsBaseURL: process.env.BINANCE_TESTNET === 'true'
-      ? 'wss://testnet.binance.vision/ws'
-      : 'wss://stream.binance.com:9443/ws',
+    // Mainnet configuration
+    mainnet: {
+      apiKey: process.env.BINANCE_API_KEY || '',
+      apiSecret: process.env.BINANCE_API_SECRET || '',
+      baseURL: process.env.BINANCE_BASE_URL || 'https://api.binance.com',
+      wsBaseURL: process.env.BINANCE_WS_BASE_URL || 'wss://stream.binance.com:9443/ws',
+      wsApiBaseURL: process.env.BINANCE_WS_API_BASE_URL || 'wss://ws-api.binance.com:443/ws-api/v3',
+    },
+    // Testnet configuration
+    testnet: {
+      apiKey: process.env.BINANCE_TESTNET_API_KEY || '',
+      apiSecret: process.env.BINANCE_TESTNET_API_SECRET || '',
+      baseURL: process.env.BINANCE_TESTNET_BASE_URL || 'https://testnet.binance.vision',
+      wsBaseURL: process.env.BINANCE_TESTNET_WS_BASE_URL || 'wss://testnet.binance.vision/ws',
+      wsApiBaseURL: process.env.BINANCE_TESTNET_WS_API_BASE_URL || 'wss://ws-api.testnet.binance.vision/ws-api/v3',
+    },
+    // Common settings
+    useTestnet: process.env.BINANCE_TESTNET === 'true',
+    // Get active configuration based on useTestnet flag
+    get activeConfig() {
+      const config = this.useTestnet ? this.testnet : this.mainnet;
+      if (!config.apiKey || !config.apiSecret) {
+        throw new Error(`API keys are not set for ${this.useTestnet ? 'testnet' : 'mainnet'} environment`);
+      }
+      return config;
+    },
+    // Додаємо альтернативні URL для балансування навантаження
+    alternativeBaseURLs: [
+      'https://api1.binance.com',
+      'https://api2.binance.com',
+      'https://api3.binance.com',
+      'https://api4.binance.com'
+    ],
     recvWindow: parseInt(process.env.BINANCE_RECV_WINDOW) || 60000,
     // Таймаути
     timeout: {
@@ -167,7 +204,9 @@ const config = {
     // Discord
     discord: {
       enabled: process.env.DISCORD_ENABLED === 'true',
-      webhookUrl: process.env.DISCORD_WEBHOOK_URL,
+      webhookUrl: process.env.DISCORD_ENABLED === 'true' 
+        ? process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/your-webhook-url'
+        : undefined
     }
   },
 

@@ -100,9 +100,17 @@ class WebSocketMonitor extends EventEmitter {
           '!miniTicker@arr', // Всі міні тікери для відстеження нових символів
           '!ticker@arr', // Повні тікери для додаткової інформації
         ];
-        
-        const wsUrl = `${config.binance.wsBaseURL}/stream?streams=${streams.join('/')}`;
-        
+
+        // Вибір endpoint залежно від типу стріму та середовища
+        let wsUrl;
+        if (config.binance.useTestnet) {
+          // Для testnet використовуємо базовий WebSocket URL
+          wsUrl = 'wss://testnet.binance.vision/ws';
+        } else {
+          // Для mainnet використовуємо комбінований стрім
+          wsUrl = `${config.binance.activeConfig.wsBaseURL}/stream?streams=${streams.join('/')}`;
+        }
+
         logger.debug(`🔌 Підключення до WebSocket: ${wsUrl}`);
         
         this.ws = new WebSocket(wsUrl);
@@ -112,6 +120,21 @@ class WebSocketMonitor extends EventEmitter {
           this.isConnected = true;
           this.reconnectAttempts = 0;
           logger.info('✅ WebSocket підключено');
+
+          // Для testnet потрібно підписатися на потоки після підключення
+          if (config.binance.useTestnet) {
+            // Підписуємося на кожен потік окремо
+            streams.forEach(stream => {
+              const subscribeMessage = {
+                method: 'SUBSCRIBE',
+                params: [stream],
+                id: Date.now()
+              };
+              logger.debug(`📡 Відправляємо підписку на ${stream}`);
+              this.ws.send(JSON.stringify(subscribeMessage));
+            });
+          }
+
           this.emit('connected');
           resolve();
         });
@@ -402,4 +425,4 @@ class WebSocketMonitor extends EventEmitter {
   }
 }
 
-module.exports = WebSocketMonitor;
+module.exports = { WebSocketMonitor };

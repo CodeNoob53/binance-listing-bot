@@ -3,7 +3,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const WebSocket = require('ws');
-const pRetry = require('p-retry');
+const pRetry = require('p-retry').default;
 const config = require('../../config');
 const logger = require('../../utils/logger');
 const constants = require('../../config/constants');
@@ -13,9 +13,15 @@ const constants = require('../../config/constants');
  */
 class BinanceClient {
   constructor() {
-    this.apiKey = config.binance.apiKey;
-    this.apiSecret = config.binance.apiSecret;
-    this.baseURL = config.binance.baseURL;
+    // Використовуємо активну конфігурацію
+    const activeConfig = config.binance.activeConfig;
+    this.apiKey = activeConfig.apiKey;
+    this.apiSecret = activeConfig.apiSecret;
+    this.baseURL = activeConfig.baseURL;
+    this.wsBaseURL = activeConfig.wsBaseURL;
+    this.wsApiBaseURL = activeConfig.wsApiBaseURL;
+    this.alternativeBaseURLs = config.binance.alternativeBaseURLs || [];
+    this.currentBaseURLIndex = 0;
     this.recvWindow = config.binance.recvWindow;
     
     // Налаштування axios
@@ -37,6 +43,34 @@ class BinanceClient {
     
     // Обробники помилок
     this.setupErrorHandlers();
+
+    // Логуємо поточну конфігурацію
+    logger.info('Binance client initialized with configuration:', {
+      environment: config.binance.useTestnet ? 'testnet' : 'mainnet',
+      baseURL: this.baseURL,
+      wsBaseURL: this.wsBaseURL,
+      wsApiBaseURL: this.wsApiBaseURL
+    });
+  }
+
+  /**
+   * Отримання наступного базового URL
+   */
+  getNextBaseURL() {
+    if (this.alternativeBaseURLs.length === 0) {
+      return this.baseURL;
+    }
+    this.currentBaseURLIndex = (this.currentBaseURLIndex + 1) % this.alternativeBaseURLs.length;
+    return this.alternativeBaseURLs[this.currentBaseURLIndex];
+  }
+
+  /**
+   * Оновлення базового URL клієнта
+   */
+  updateBaseURL() {
+    const newBaseURL = this.getNextBaseURL();
+    this.client.defaults.baseURL = newBaseURL;
+    logger.info(`Switched to Binance API endpoint: ${newBaseURL}`);
   }
 
   /**
@@ -73,6 +107,12 @@ class BinanceClient {
             // IP заблоковано
             logger.error('⛔ IP заблоковано Binance. Необхідно змінити IP');
             throw new Error('IP banned by Binance');
+          }
+
+          if (status >= 500) {
+            // Помилка сервера - пробуємо інший endpoint
+            this.updateBaseURL();
+            return this.client(error.config);
           }
         }
         

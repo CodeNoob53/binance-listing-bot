@@ -10,18 +10,24 @@ const Joi = require('joi');
 function validateConfig(config) {
   try {
     // Схема для Binance API
-    const binanceSchema = Joi.object({
-      apiKey: Joi.string().required().messages({
-        'string.empty': 'BINANCE_API_KEY не може бути порожнім',
-        'any.required': 'BINANCE_API_KEY є обов\'язковим'
+    const binanceApiConfigSchema = Joi.object({
+      apiKey: Joi.string().allow('').messages({
+        'string.empty': 'API ключ не може бути порожнім',
       }),
-      apiSecret: Joi.string().required().messages({
-        'string.empty': 'BINANCE_API_SECRET не може бути порожнім',
-        'any.required': 'BINANCE_API_SECRET є обов\'язковим'
+      apiSecret: Joi.string().allow('').messages({
+        'string.empty': 'API секрет не може бути порожнім',
       }),
-      testnet: Joi.boolean(),
       baseURL: Joi.string().uri(),
       wsBaseURL: Joi.string(),
+      wsApiBaseURL: Joi.string().uri()
+    });
+
+    const binanceSchema = Joi.object({
+      mainnet: binanceApiConfigSchema.required(),
+      testnet: binanceApiConfigSchema.required(),
+      useTestnet: Joi.boolean(),
+      activeConfig: Joi.object().required(),
+      alternativeBaseURLs: Joi.array().items(Joi.string().uri()),
       recvWindow: Joi.number().integer().min(1000).max(60000),
       timeout: Joi.object({
         rest: Joi.number().integer().min(1000),
@@ -32,6 +38,15 @@ function validateConfig(config) {
         delay: Joi.number().integer().min(100),
         backoff: Joi.number().min(1)
       })
+    }).custom((obj, helpers) => {
+      // Перевіряємо, що API ключі встановлені для активного середовища
+      const activeConfig = obj.useTestnet ? obj.testnet : obj.mainnet;
+      if (!activeConfig.apiKey || !activeConfig.apiSecret) {
+        return helpers.error('any.invalid', {
+          message: `API ключі повинні бути встановлені для ${obj.useTestnet ? 'testnet' : 'mainnet'} середовища`
+        });
+      }
+      return obj;
     });
 
     // Схема для торгових налаштувань
